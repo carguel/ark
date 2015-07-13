@@ -23,21 +23,20 @@ module Ark
     def sevenzip_command
       if resource.strip_components <= 0
         sevenzip_command_builder(resource.path, 'x')
-        return
+      else
+        tmpdir = make_temp_directory
+        cmd = sevenzip_command_builder(tmpdir, 'x')
+
+        cmd += " && "
+        currdir = tmpdir.gsub('/', '\\')
+
+        1.upto(resource.strip_components).each do |count|
+          cmd += "for /f %#{count} in ('dir /ad /b \"#{currdir}\"') do "
+          currdir += "\\%#{count}"
+        end
+
+        cmd += "xcopy \"#{currdir}\" \"#{resource.home_dir}\" /s /e /Y"
       end
-
-      tmpdir = make_temp_directory
-      cmd = sevenzip_command_builder(tmpdir, 'e')
-
-      cmd += " && "
-      currdir = tmpdir.gsub('/', '\\')
-
-      1.upto(resource.strip_components).each do |count|
-        cmd += "for /f %#{count} in ('dir /ad /b \"#{currdir}\"') do "
-        currdir += "\\%#{count}"
-      end
-
-      cmd += "xcopy \"#{currdir}\" \"#{resource.home_dir}\" /s /e"
     end
 
     def sevenzip_binary
@@ -45,7 +44,7 @@ module Ark
     end
 
     def sevenzip_command_builder(dir, command)
-      "#{sevenzip_binary} #{command} \"#{resource.release_file}\"#{extension_is_tar} -o\"#{dir}\" -uy"
+      "#{sevenzip_binary} #{command} \"#{resource.release_file}\"#{extension_is_tar} -o\"#{dir}\" -y"
     end
 
     def extension_is_tar
